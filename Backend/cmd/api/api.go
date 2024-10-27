@@ -35,3 +35,4 @@ func (s *APIServer) Run() error {
 }
 
 // https://www.youtube.com/watch?v=7VLmLOiQ3ck
+// https://www.alexedwards.net/blog/an-introduction-to-handlers-and-servemuxes-in-go
