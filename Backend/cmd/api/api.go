@@ -33,3 +33,5 @@ func (s *APIServer) Run() error {
 
 	return http.ListenAndServe(s.addr, router)
 }
+
+// https://www.youtube.com/watch?v=7VLmLOiQ3ck
