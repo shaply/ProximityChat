@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/shaply/ProximityChat/Backend/service/auth"
 	"github.com/shaply/ProximityChat/Backend/types"
@@ -38,12 +39,23 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Print("Payload: ", payload)
 
+	// validate the payload
+	if err := utils.Validate.Struct(payload); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %+v", errors))
+		return
+	}
+
+	fmt.Print("Payload is valid")
+
 	// check if the user exists
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	user, _ := h.store.GetUserByEmail(ctx, payload.Email)
-	if user == nil {
+	fmt.Print("Beginning to check if user exists")
+
+	_, err := h.store.GetUserByEmail(ctx, payload.Email)
+	if err == nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user with email %s already exists", payload.Email))
 		return
 	}

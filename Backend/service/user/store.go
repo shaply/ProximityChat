@@ -20,9 +20,6 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*types.User, 
 	var user types.User
 	err := s.db.Collection("Users").FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, nil
-		}
 		return nil, err
 	}
 	return &user, nil
