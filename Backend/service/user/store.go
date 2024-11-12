@@ -18,7 +18,7 @@ func NewStore(db *mongo.Database) *Store {
 
 func (s *Store) GetUserByEmail(ctx context.Context, email string) (*types.User, error) {
 	var user types.User
-	err := s.db.Collection("Users").FindOne(ctx, bson.M{"email": email}).Decode(&user)
+	err := s.db.Collection(types.ProximityChat.Users).FindOne(ctx, bson.M{"email": email}).Decode(&user)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*types.User, 
 
 func (s *Store) GetUserByID(ctx context.Context, id int) (*types.User, error) {
 	var user types.User
-	err := s.db.Collection("Users").FindOne(ctx, bson.M{"id": id}).Decode(user)
+	err := s.db.Collection(types.ProximityChat.Users).FindOne(ctx, bson.M{"id": id}).Decode(user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -38,7 +38,7 @@ func (s *Store) GetUserByID(ctx context.Context, id int) (*types.User, error) {
 }
 
 func (s *Store) CreateUser(ctx context.Context, user *types.User) error {
-	_, err := s.db.Collection("Users").InsertOne(ctx, user)
+	_, err := s.db.Collection(types.ProximityChat.Users).InsertOne(ctx, user)
 	if err != nil {
 		return err
 	}

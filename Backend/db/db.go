@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shaply/ProximityChat/Backend/config"
+	"github.com/shaply/ProximityChat/Backend/types"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -30,7 +32,14 @@ func NewMongoDBStorage(cfg Config) (*mongo.Database, error) {
 	fmt.Println("Pinged your deployment. Successfully connected to MongoDB Cluster!")
 
 	// Get the database for ProximityChat
-	db := client.Database("ProximityChat")
+	db := client.Database(types.ProximityChat.Database)
 
 	return db, nil
+}
+
+// Create the connection with the database
+func InitiateConnection() (*mongo.Database, error) {
+	return NewMongoDBStorage(Config{
+		URI: config.Envs.URI,
+	})
 }

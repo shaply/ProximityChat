@@ -4,15 +4,12 @@ import (
 	"log"
 
 	"github.com/shaply/ProximityChat/Backend/cmd/api"
-	"github.com/shaply/ProximityChat/Backend/config"
 	"github.com/shaply/ProximityChat/Backend/db"
 )
 
 func main() {
 	// Initialize the MongoDB storage connection
-	database, err := db.NewMongoDBStorage(db.Config{
-		URI: config.Envs.URI,
-	})
+	database, err := db.InitiateConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
