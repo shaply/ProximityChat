@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 )
@@ -29,4 +30,9 @@ func WriteJSON(w http.ResponseWriter, status int, v any) error {
 // Makes error reporting consistent.
 func WriteError(w http.ResponseWriter, status int, err error) {
 	WriteJSON(w, status, map[string]string{"error": err.Error()})
+}
+
+// Make email storage and getting consistent
+func FixEmail(email string) string {
+	return strings.ToLower(email)
 }

@@ -27,7 +27,38 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
+	// get JSON payload
+	var payload types.LoginUserPayload
+	if err := utils.ParseJSON(r, &payload); err != nil {
+		utils.WriteError(w, http.StatusBadRequest, err)
+	}
 
+	// validate the payload
+	if err := utils.Validate.Struct(payload); err != nil {
+		errors := err.(validator.ValidationErrors)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("invalid payload %+v", errors))
+		return
+	}
+
+	// check if the user exists
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	payload.Email = utils.FixEmail(payload.Email)
+	user, err := h.store.GetUserByEmail(ctx, payload.Email)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	// check if the password is correct
+	if !auth.CheckPasswordHash(payload.Password, user.Password) {
+		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("invalid password"))
+		return
+	}
+
+	// generate a JWT token
+	// NEED TO DO
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -54,6 +85,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Print("Beginning to check if user exists")
 
+	payload.Email = utils.FixEmail(payload.Email)
 	_, err := h.store.GetUserByEmail(ctx, payload.Email)
 	if err == nil {
 		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("user with email %s already exists", payload.Email))
@@ -74,6 +106,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		LastName:  payload.LastName,
 		Email:     payload.Email,
 		Password:  hashedPassword,
+		CreatedAt: time.Now(),
 	})
 	if err != nil {
 		utils.WriteError(w, http.StatusInternalServerError, err)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux" // Need to run go get github.com/gorilla/mux to install this package
+	"github.com/rs/cors"
 	"github.com/shaply/ProximityChat/Backend/service/user"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -32,7 +33,15 @@ func (s *APIServer) Run() error {
 
 	log.Println("Listening on", s.addr)
 
-	return http.ListenAndServe(s.addr, router)
+	// CORS
+	corsHandler := cors.New(cors.Options{
+		AllowedOrigins: []string{"*"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders: []string{"Accept", "Content-Type", "Content-Length", "Accept-Encoding", "X-CSRF-Token", "Authorization"},
+	})
+
+	return http.ListenAndServe(s.addr, corsHandler.Handler(router))
+	// return http.ListenAndServe(s.addr, router);
 }
 
 // https://www.youtube.com/watch?v=7VLmLOiQ3ck
