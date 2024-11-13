@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/shaply/ProximityChat/Backend/config"
 	"github.com/shaply/ProximityChat/Backend/service/auth"
 	"github.com/shaply/ProximityChat/Backend/types"
 	"github.com/shaply/ProximityChat/Backend/utils"
@@ -47,18 +48,28 @@ func (h *Handler) handleLogin(w http.ResponseWriter, r *http.Request) {
 	payload.Email = utils.FixEmail(payload.Email)
 	user, err := h.store.GetUserByEmail(ctx, payload.Email)
 	if err != nil {
-		utils.WriteError(w, http.StatusInternalServerError, err)
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("email or password is incorrect"))
 		return
 	}
 
+	fmt.Printf("User: %+v\n", user)
+
 	// check if the password is correct
 	if !auth.CheckPasswordHash(payload.Password, user.Password) {
-		utils.WriteError(w, http.StatusUnauthorized, fmt.Errorf("invalid password"))
+		utils.WriteError(w, http.StatusBadRequest, fmt.Errorf("email or password is incorrect"))
 		return
 	}
 
 	// generate a JWT token
-	// NEED TO DO
+	secret := []byte(config.Envs.JWTSecret)
+	token, err := auth.CreateJWTToken(secret, user.ID)
+	if err != nil {
+		utils.WriteError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	// Placeholder
+	utils.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 }
 
 func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +79,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, http.StatusBadRequest, err)
 	}
 
-	fmt.Print("Payload: ", payload)
+	// fmt.Print("Payload: ", payload)
 
 	// validate the payload
 	if err := utils.Validate.Struct(payload); err != nil {
@@ -77,13 +88,13 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Print("Payload is valid")
+	// fmt.Print("Payload is valid")
 
 	// check if the user exists
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	fmt.Print("Beginning to check if user exists")
+	// fmt.Print("Beginning to check if user exists")
 
 	payload.Email = utils.FixEmail(payload.Email)
 	_, err := h.store.GetUserByEmail(ctx, payload.Email)
@@ -92,7 +103,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Print("User does not exist")
+	// fmt.Print("User does not exist")
 
 	// if not, create the new user
 	hashedPassword, err := auth.HashPassword(payload.Password)
@@ -113,7 +124,7 @@ func (h *Handler) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Print("Registered user")
+	// fmt.Print("Registered user")
 
 	utils.WriteJSON(w, http.StatusCreated, map[string]string{"message": "user created"})
 }

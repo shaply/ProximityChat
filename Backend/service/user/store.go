@@ -5,6 +5,7 @@ import (
 
 	"github.com/shaply/ProximityChat/Backend/types"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -25,9 +26,9 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (*types.User, 
 	return &user, nil
 }
 
-func (s *Store) GetUserByID(ctx context.Context, id int) (*types.User, error) {
+func (s *Store) GetUserByID(ctx context.Context, id primitive.ObjectID) (*types.User, error) {
 	var user types.User
-	err := s.db.Collection(types.ProximityChat.Users).FindOne(ctx, bson.M{"id": id}).Decode(user)
+	err := s.db.Collection(types.ProximityChat.Users).FindOne(ctx, bson.M{"_id": id}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil

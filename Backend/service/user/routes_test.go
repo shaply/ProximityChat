@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/shaply/ProximityChat/Backend/types"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestUserServiceHandlers(test *testing.T) {
@@ -71,7 +72,7 @@ func (m *mockUserStore) GetUserByEmail(ctx context.Context, email string) (*type
 	return nil, nil
 }
 
-func (m *mockUserStore) GetUserByID(ctx context.Context, id int) (*types.User, error) {
+func (m *mockUserStore) GetUserByID(ctx context.Context, id primitive.ObjectID) (*types.User, error) {
 	return nil, nil
 }
 

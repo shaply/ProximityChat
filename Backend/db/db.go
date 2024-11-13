@@ -40,6 +40,6 @@ func NewMongoDBStorage(cfg Config) (*mongo.Database, error) {
 // Create the connection with the database
 func InitiateConnection() (*mongo.Database, error) {
 	return NewMongoDBStorage(Config{
-		URI: config.Envs.URI,
+		URI: config.Envs.MongoDB_URI,
 	})
 }
