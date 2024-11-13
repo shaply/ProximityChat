@@ -14,6 +14,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type contextKey string
+
+const UserKey contextKey = "userID"
+const EmailKey contextKey = "email"
+
 func CreateJWTToken(secret []byte, userID primitive.ObjectID) (string, error) {
 	expiration := time.Second * time.Duration(config.Envs.JWTExpirationInSeconds)
 
@@ -33,10 +38,6 @@ func CreateJWTToken(secret []byte, userID primitive.ObjectID) (string, error) {
 
 	return tokenString, nil
 }
-
-type contextKey string
-
-const UserKey contextKey = "userID"
 
 func WithJWTAuth(handlerFunc http.HandlerFunc, store types.UserStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -76,8 +77,8 @@ func WithJWTAuth(handlerFunc http.HandlerFunc, store types.UserStore) http.Handl
 		}
 
 		// Add the user to the context
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, UserKey, u.ID)
+		ctx := context.WithValue(r.Context(), UserKey, u.ID)
+		ctx = context.WithValue(ctx, EmailKey, u.Email)
 		r = r.WithContext(ctx)
 
 		// Call the function if the token is valid

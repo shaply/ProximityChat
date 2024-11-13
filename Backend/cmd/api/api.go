@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux" // Need to run go get github.com/gorilla/mux to install this package
 	"github.com/rs/cors"
 	"github.com/shaply/ProximityChat/Backend/service/user"
+	conn "github.com/shaply/ProximityChat/Backend/service/ws"
 
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -29,7 +30,9 @@ func (s *APIServer) Run() error {
 
 	userStore := user.NewStore(s.db)
 	userHandler := user.NewHandler(userStore)
-	userHandler.RegisterRoutes(subrouter) // Handles the routes of the router
+	userHandler.RegisterRoutes(subrouter) // Handles the routes of the registration/login user
+	connHandler := conn.NewHandler(userStore)
+	connHandler.RegisterRoutes(subrouter) // Handles the routes of the websocket connection upgrader
 
 	log.Println("Listening on", s.addr)
 
