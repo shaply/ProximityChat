@@ -1,0 +1,1 @@
+1. Need to create a frontend with basic chat layout to test the sending messages and receiving messages functionality when I add it in the backend, or maybe can just use the websocket thing on postman
