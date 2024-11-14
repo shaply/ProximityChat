@@ -11,7 +11,7 @@ import (
 )
 
 type Handler struct {
-	store *types.UserStore
+	store types.UserStore
 }
 
 type Client struct {
@@ -29,12 +29,12 @@ var upgrader = websocket.Upgrader{
 
 var clients = make(map[*Client]bool)
 
-func NewHandler(store *types.UserStore) *Handler {
+func NewHandler(store types.UserStore) *Handler {
 	return &Handler{store: store}
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/ws/{JWTToken}", auth.WithJWTAuth(serveWS, *h.store)).Methods("GET")
+	router.HandleFunc("/ws/{JWTToken}", auth.WithJWTAuth(serveWS, h.store)).Methods("GET")
 }
 
 // serveWS upgrades the connection to a websocket connection

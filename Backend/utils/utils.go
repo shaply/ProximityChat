@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/mux"
 )
 
 var Validate = validator.New()
@@ -40,13 +41,21 @@ func FixEmail(email string) string {
 func GetTokenFromRequest(r *http.Request) string {
 	tokenAuth := r.Header.Get("Authorization")
 	tokenQuery := r.URL.Query().Get("token")
+	tokenPath := mux.Vars(r)["JWTToken"]
 
 	if tokenAuth != "" {
+		fmt.Println("Token from tokenAuth: ", tokenAuth)
 		return tokenAuth
 	}
 
 	if tokenQuery != "" {
+		fmt.Println("Token from tokenQuery: ", tokenQuery)
 		return tokenQuery
+	}
+
+	if tokenPath != "" {
+		fmt.Println("Token from tokenPath: ", tokenPath)
+		return tokenPath
 	}
 
 	return ""
