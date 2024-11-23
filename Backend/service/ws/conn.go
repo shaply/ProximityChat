@@ -1,4 +1,4 @@
-package conn
+package ws
 
 import (
 	"fmt"
@@ -14,11 +14,6 @@ type Handler struct {
 	store types.UserStore
 }
 
-type Client struct {
-	Conn  *websocket.Conn
-	Email string
-}
-
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
@@ -27,7 +22,8 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-var clients = make(map[*Client]bool)
+var ClientList = make(map[*types.Client]bool)
+var Broadcast = make(chan types.Message)
 
 func NewHandler(store types.UserStore) *Handler {
 	return &Handler{store: store}
@@ -42,20 +38,51 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	// Upgrade the connection to a websocket connection
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
+		fmt.Println("Error upgrading connection:", err)
 		http.Error(w, "could not upgrade connection", http.StatusBadRequest)
 		return
 	}
+	defer conn.Close()
 
-	client := &Client{
-		Conn:  conn,
-		Email: r.Context().Value(auth.EmailKey).(string),
-	}
+	client := NewClient(conn, r.Context().Value(auth.EmailKey).(string))
 
 	// Register the client
-	clients[client] = true
+	ClientList[client] = true
 
 	fmt.Println("Client connected:", client.Email)
 
 	// Listen for messages
-	// TODO
+	go readMessages(client)
+}
+
+func (h *Handler) HandleMessages() {
+	for {
+		msg := <-Broadcast
+		for client := range ClientList {
+			err := client.Conn.WriteJSON(msg)
+			if err != nil {
+				fmt.Println("Error sending message:", err)
+				client.Conn.Close()
+				delete(ClientList, client)
+			}
+		}
+	}
+}
+
+// readMessages reads messages from the client and broadcasts them
+func readMessages(client *types.Client) {
+	defer func() {
+		client.Conn.Close()
+		delete(ClientList, client)
+	}()
+
+	for {
+		var msg types.Message
+		err := client.Conn.ReadJSON(&msg)
+		if err != nil {
+			fmt.Println("Error reading message:", err)
+			break
+		}
+		Broadcast <- msg
+	}
 }

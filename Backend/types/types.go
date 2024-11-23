@@ -6,6 +6,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -28,6 +29,16 @@ type User struct {
 	Email     string             `bson:"email" json:"email"`
 	Password  string             `bson:"password" json:"password"`
 	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
+}
+
+type Client struct {
+	Email string
+	Conn  *websocket.Conn
+}
+
+type Message struct {
+	Email   string `json:"email"`
+	Message string `json:"message"`
 }
 
 type UserStore interface {
