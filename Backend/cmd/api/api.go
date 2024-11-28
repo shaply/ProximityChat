@@ -25,14 +25,17 @@ func NewAPIServer(addr string, db *mongo.Database) *APIServer {
 }
 
 func (s *APIServer) Run() error {
+	log.Println("Beginning API server")
 	router := mux.NewRouter() // Creates new router for API server
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 
 	userStore := user.NewStore(s.db)
 	userHandler := user.NewHandler(userStore)
 	userHandler.RegisterRoutes(subrouter) // Handles the routes of the registration/login user
+
+	log.Println("Registered user routes")
+
 	connHandler := conn.NewHandler(userStore)
-	connHandler.HandleMessages()          // Handles the messages of the websocket connection
 	connHandler.RegisterRoutes(subrouter) // Handles the routes of the websocket connection upgrader
 
 	log.Println("Listening on", s.addr)

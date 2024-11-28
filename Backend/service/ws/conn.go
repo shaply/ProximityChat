@@ -1,8 +1,10 @@
 package ws
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -23,6 +25,7 @@ var upgrader = websocket.Upgrader{
 }
 
 var ClientList = make(map[*types.Client]bool)
+var ClientListMutex sync.Mutex
 var Broadcast = make(chan types.Message)
 
 func NewHandler(store types.UserStore) *Handler {
@@ -51,8 +54,11 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Client connected:", client.Email)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// Listen for messages
-	go readMessages(client)
+	go readMessages(ctx, client)
 }
 
 func (h *Handler) HandleMessages() {
@@ -70,10 +76,12 @@ func (h *Handler) HandleMessages() {
 }
 
 // readMessages reads messages from the client and broadcasts them
-func readMessages(client *types.Client) {
+func readMessages(ctx context.Context, client *types.Client) {
 	defer func() {
 		client.Conn.Close()
+		ClientListMutex.Lock()
 		delete(ClientList, client)
+		ClientListMutex.Unlock()
 	}()
 
 	for {
@@ -83,6 +91,10 @@ func readMessages(client *types.Client) {
 			fmt.Println("Error reading message:", err)
 			break
 		}
-		Broadcast <- msg
+		select {
+		case <-ctx.Done():
+			return
+		case Broadcast <- msg:
+		}
 	}
 }
