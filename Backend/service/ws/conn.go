@@ -61,9 +61,14 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	go readMessages(ctx, client)
 }
 
-func (h *Handler) HandleMessages() {
+func (h *Handler) HandleMessages(ctx context.Context) {
 	for {
-		msg := <-Broadcast
+		var msg types.Message
+		select {
+		case <-ctx.Done():
+			return
+		case msg = <-Broadcast:
+		}
 		for client := range ClientList {
 			err := client.Conn.WriteJSON(msg)
 			if err != nil {

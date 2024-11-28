@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -26,6 +27,9 @@ func NewAPIServer(addr string, db *mongo.Database) *APIServer {
 
 func (s *APIServer) Run() error {
 	log.Println("Beginning API server")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	router := mux.NewRouter() // Creates new router for API server
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 
@@ -36,6 +40,7 @@ func (s *APIServer) Run() error {
 	log.Println("Registered user routes")
 
 	connHandler := conn.NewHandler(userStore)
+	connHandler.HandleMessages(ctx)       // Handles the messages of the websocket connection
 	connHandler.RegisterRoutes(subrouter) // Handles the routes of the websocket connection upgrader
 
 	log.Println("Listening on", s.addr)
