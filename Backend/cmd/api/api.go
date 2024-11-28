@@ -40,8 +40,10 @@ func (s *APIServer) Run() error {
 	log.Println("Registered user routes")
 
 	connHandler := conn.NewHandler(userStore)
-	connHandler.HandleMessages(ctx)       // Handles the messages of the websocket connection
+	go connHandler.HandleMessages(ctx)    // Handles the messages of the websocket connection
 	connHandler.RegisterRoutes(subrouter) // Handles the routes of the websocket connection upgrader
+
+	log.Println("Registered websocket routes")
 
 	log.Println("Listening on", s.addr)
 
