@@ -3,6 +3,7 @@ package ws
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 
@@ -82,11 +83,13 @@ func (h *Handler) HandleMessages(ctx context.Context) {
 
 // readMessages reads messages from the client and broadcasts them
 func readMessages(ctx context.Context, client *types.Client) {
+	log.Printf("Reading messages from client: %s\n", client.Email)
 	defer func() {
 		client.Conn.Close()
 		ClientListMutex.Lock()
 		delete(ClientList, client)
 		ClientListMutex.Unlock()
+		log.Printf("Client disconnected: %s\n", client.Email)
 	}()
 
 	for {
