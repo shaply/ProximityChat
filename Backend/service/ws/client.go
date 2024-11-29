@@ -1,6 +1,8 @@
 package ws
 
 import (
+	"math"
+
 	"github.com/gorilla/websocket"
 	"github.com/shaply/ProximityChat/Backend/types"
 )
@@ -22,5 +24,5 @@ func UpdateLocation(c *types.Client, loc []float64) {
 }
 
 func CheckDistance(c1, c2 *types.Client, distance float64) bool { // NEED TO FIX
-	return c1.Location.Lat-c2.Location.Lat <= distance && c1.Location.Lon-c2.Location.Lon <= distance
+	return math.Abs(c1.Location.Lat-c2.Location.Lat) <= distance && math.Abs(c1.Location.Lon-c2.Location.Lon) <= distance
 }

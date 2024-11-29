@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -17,15 +18,21 @@ type Handler struct {
 	store types.UserStore
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-
-	// Security flaw: Doesn't check the origin of the request
-	CheckOrigin: func(r *http.Request) bool { return true },
+type EnhancedMessage struct {
+	Type      string    `json:"type"`
+	Text      string    `json:"text,omitempty"`
+	Email     string    `json:"email"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 var (
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+
+		// Security flaw: Doesn't check the origin of the request
+		CheckOrigin: func(r *http.Request) bool { return true },
+	}
 	ClientList      = make(map[*types.Client]chan types.Message)
 	ClientListMutex sync.Mutex
 	ConnHandler     = NewHandler(nil)
@@ -80,9 +87,15 @@ func (h *Handler) HandleMessages(ctx context.Context, client *types.Client) {
 				UpdateLocation(client, msg.Location)
 			} else if msg.Type == "text" {
 				// Broadcast the message to all clients
+				enhancedMsg := EnhancedMessage{
+					Type:      "text",
+					Text:      msg.Message,
+					Email:     client.Email,
+					Timestamp: time.Now(),
+				}
 				for c := range ClientList {
-					if CheckDistance(client, c, 100) {
-						c.Conn.WriteJSON(msg)
+					if CheckDistance(client, c, 100) { // This is where the distance is checked
+						c.Conn.WriteJSON(enhancedMsg)
 					}
 				}
 			}
