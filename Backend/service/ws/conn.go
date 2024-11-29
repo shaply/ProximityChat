@@ -25,9 +25,11 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-var ClientList = make(map[*types.Client]bool)
-var ClientListMutex sync.Mutex
-var Broadcast = make(chan types.Message)
+var (
+	ClientList      = make(map[*types.Client]chan types.Message)
+	ClientListMutex sync.Mutex
+	ConnHandler     = NewHandler(nil)
+)
 
 func NewHandler(store types.UserStore) *Handler {
 	return &Handler{store: store}
@@ -51,7 +53,7 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	client := NewClient(conn, r.Context().Value(auth.EmailKey).(string))
 
 	// Register the client
-	ClientList[client] = true
+	ClientList[client] = make(chan types.Message, 100) // Only 100 messages allowed at a time
 
 	fmt.Println("Client connected:", client.Email)
 
@@ -59,23 +61,21 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Listen for messages
+	go ConnHandler.HandleMessages(ctx, client)
 	readMessages(ctx, client) // Don't want to make this a go routine because if this function returns, the connection is closed
 }
 
-func (h *Handler) HandleMessages(ctx context.Context) {
+func (h *Handler) HandleMessages(ctx context.Context, client *types.Client) {
+	defer func() {
+		log.Printf("Closing message handler for client: %s\n", client.Email)
+	}()
 	for {
-		var msg types.Message
 		select {
 		case <-ctx.Done():
 			return
-		case msg = <-Broadcast:
-		}
-		for client := range ClientList {
-			err := client.Conn.WriteJSON(msg)
-			if err != nil {
-				fmt.Println("Error sending message:", err)
-				client.Conn.Close()
-				delete(ClientList, client)
+		case msg := <-ClientList[client]:
+			for c := range ClientList {
+				c.Conn.WriteJSON(msg)
 			}
 		}
 	}
@@ -102,7 +102,7 @@ func readMessages(ctx context.Context, client *types.Client) {
 		select {
 		case <-ctx.Done():
 			return
-		case Broadcast <- msg:
+		case ClientList[client] <- msg:
 		}
 	}
 }
