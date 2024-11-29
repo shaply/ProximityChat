@@ -59,7 +59,7 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Listen for messages
-	go readMessages(ctx, client)
+	readMessages(ctx, client) // Don't want to make this a go routine because if this function returns, the connection is closed
 }
 
 func (h *Handler) HandleMessages(ctx context.Context) {
