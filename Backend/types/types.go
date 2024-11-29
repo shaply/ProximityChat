@@ -31,13 +31,21 @@ type User struct {
 	CreatedAt time.Time          `bson:"createdAt" json:"createdAt"`
 }
 
+type Location struct {
+	Lat float64 `json:"lat"`
+	Lon float64 `json:"lon"`
+}
+
 type Client struct {
-	Email string
-	Conn  *websocket.Conn
+	Email    string
+	Conn     *websocket.Conn
+	Location Location
 }
 
 type Message struct {
-	Message string `json:"message"`
+	Type     string    `json:"type"`
+	Message  string    `json:"message"`
+	Location []float64 `json:"location"`
 }
 
 type UserStore interface {

@@ -50,7 +50,7 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.Close()
 
-	client := NewClient(conn, r.Context().Value(auth.EmailKey).(string))
+	client := NewClient(conn, r.Context().Value(auth.EmailKey).(string), []float64{0, 0})
 
 	// Register the client
 	ClientList[client] = make(chan types.Message, 100) // Only 100 messages allowed at a time
@@ -74,8 +74,17 @@ func (h *Handler) HandleMessages(ctx context.Context, client *types.Client) {
 		case <-ctx.Done():
 			return
 		case msg := <-ClientList[client]:
-			for c := range ClientList {
-				c.Conn.WriteJSON(msg)
+			// Figure out whether message is a location or text
+			if msg.Type == "location" {
+				// Update the client's location
+				UpdateLocation(client, msg.Location)
+			} else if msg.Type == "text" {
+				// Broadcast the message to all clients
+				for c := range ClientList {
+					if CheckDistance(client, c, 100) {
+						c.Conn.WriteJSON(msg)
+					}
+				}
 			}
 		}
 	}
