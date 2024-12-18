@@ -66,6 +66,47 @@ func (b *Bounds) Extend(point Point) {
 	}
 }
 
+func (b *Bounds) IntersectsCircle(circle Circle) bool {
+	if b.Contains(circle.Center) {
+		return true
+	}
+	normalizedBound := Bounds{
+		BottomLeft: Translate(b.BottomLeft, -circle.Center.X, -circle.Center.Y),
+		TopRight:   Translate(b.TopRight, -circle.Center.X, -circle.Center.Y),
+	}
+
+	// Find the closest point to the circle
+	var (
+		closestX int
+		closestY int
+	)
+	// Helper function to find the minimum of the absolute values of two integers
+	minOfAbs := func(a, b int) int {
+		if a < 0 {
+			a = -a
+		}
+		if b < 0 {
+			b = -b
+		}
+		if a < b {
+			return a
+		}
+		return b
+	}
+	if normalizedBound.BottomLeft.X^normalizedBound.TopRight.X < 0 {
+		closestX = 0
+	} else {
+		closestX = minOfAbs(normalizedBound.BottomLeft.X, normalizedBound.TopRight.X)
+	}
+	if normalizedBound.BottomLeft.Y^normalizedBound.TopRight.Y < 0 {
+		closestY = 0
+	} else {
+		closestY = minOfAbs(normalizedBound.BottomLeft.Y, normalizedBound.TopRight.Y)
+	}
+
+	return circle.ContainsFromOriginWithRadius(Point{closestX, closestY})
+}
+
 /**
  * Returns the quadrant in which the point is located
  * @Returns -1 if the point is not in the bounds, otherwise, 0, 1, 2, or 3
@@ -85,4 +126,12 @@ func (b *Bounds) WhichQuadrant(point Point) int8 {
 		}
 		return 2
 	}
+}
+
+// Translates the point by the translation and wraps it around the boundary
+func (b *Bounds) TranslatePointWithWrap(point *Point, translate Point) {
+	point.Translate(-b.BottomLeft.X, -b.BottomLeft.Y)
+	point.X = ((point.X+translate.X)%b.Width() + b.Width()) % b.Width()
+	point.Y = ((point.Y+translate.Y)%b.Height() + b.Height()) % b.Height()
+	point.Translate(b.BottomLeft.X, b.BottomLeft.Y)
 }

@@ -16,6 +16,7 @@ import (
 
 type Handler struct {
 	store types.UserStore
+	qTree *Quadtree // This will be used to manage all the connections
 }
 
 type EnhancedMessage struct {
