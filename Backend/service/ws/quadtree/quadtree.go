@@ -6,7 +6,7 @@
 // 5. Removals that cause the node to go below the minimum size will cause the node to merge with its parent
 // 6. Because of how bounds is working, the boundary of the big box will probably have to be a power of 2
 
-// TODO: queryNearby implementation change to calculate with wrapping
+// TODO: Change the points storage array to a linked list, create waitgroups and syncing for quadtree reading and writing
 
 package quadtree
 

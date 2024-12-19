@@ -1,7 +1,7 @@
 package quadtree
 
 /*
-TODO for quadtree: Test QueryNearby
+TODO for quadtree: Test
 TODO for bounds: Test
 */
 
