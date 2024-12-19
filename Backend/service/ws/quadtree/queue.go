@@ -1,5 +1,7 @@
 package quadtree
 
+import "context"
+
 // This is the queue for the query nearby function
 
 type node struct {
@@ -67,13 +69,30 @@ func (it *QueuePointsIterator) Next() *Point {
 	return point
 }
 
-func (q *QueuePoints) Range() <-chan *Point {
+func (q *QueuePoints) Range(ctx context.Context) <-chan *Point {
 	ch := make(chan *Point)
 	go func() {
+		defer close(ch)
 		for it := q.Iterator(); it.HasNext(); {
-			ch <- it.Next()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				ch <- it.Next()
+			}
 		}
-		close(ch)
 	}()
 	return ch
+}
+
+func (q *QueuePoints) String() string {
+	str := "["
+	for point := range q.Range(context.Background()) {
+		str += point.String() + " "
+	}
+	if len(str) > 1 {
+		str = str[:len(str)-1]
+	}
+	str += "]"
+	return str
 }

@@ -11,12 +11,13 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/shaply/ProximityChat/Backend/service/auth"
+	quadtree "github.com/shaply/ProximityChat/Backend/service/ws/quadtree"
 	"github.com/shaply/ProximityChat/Backend/types"
 )
 
 type Handler struct {
 	store types.UserStore
-	qTree *Quadtree // This will be used to manage all the connections
+	qTree *quadtree.Handler // This will be used to manage all the connections
 }
 
 type EnhancedMessage struct {
@@ -34,13 +35,14 @@ var (
 		// Security flaw: Doesn't check the origin of the request
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
+	dist            = 25.0 // Distance in miles
 	ClientList      = make(map[*types.Client]chan types.Message)
 	ClientListMutex sync.Mutex
 	ConnHandler     = NewHandler(nil)
 )
 
 func NewHandler(store types.UserStore) *Handler {
-	return &Handler{store: store}
+	return &Handler{store: store, qTree: quadtree.QuadHandler}
 }
 
 func (h *Handler) RegisterRoutes(router *mux.Router) {
@@ -62,8 +64,10 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 
 	// Register the client
 	ClientList[client] = make(chan types.Message, 100) // Only 100 messages allowed at a time
+	ConnHandler.qTree.Insert(client)
 
 	fmt.Println("Client connected:", client.Email)
+	ConnHandler.qTree.PrintTree()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -85,7 +89,14 @@ func (h *Handler) HandleMessages(ctx context.Context, client *types.Client) {
 			// Figure out whether message is a location or text
 			if msg.Type == "location" {
 				// Update the client's location
+				oldLoc := client.Location
 				UpdateLocation(client, msg.Location)
+				ConnHandler.qTree.Move(client, &oldLoc)
+				sucess := types.Message{
+					Type:    "status",
+					Message: "Location updated",
+				}
+				client.Conn.WriteJSON(sucess)
 			} else if msg.Type == "text" {
 				// Broadcast the message to all clients
 				enhancedMsg := EnhancedMessage{
@@ -94,12 +105,22 @@ func (h *Handler) HandleMessages(ctx context.Context, client *types.Client) {
 					Email:     client.Email,
 					Timestamp: time.Now(),
 				}
-				for c := range ClientList {
-					if CheckDistance(client, c, 100) { // This is where the distance is checked
+				ch := ConnHandler.qTree.GetNearby(ctx, client, dist)
+			broadcastLoop:
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case c, ok := <-ch:
+						if !ok {
+							break broadcastLoop
+						}
 						c.Conn.WriteJSON(enhancedMsg)
 					}
 				}
 			}
+
+			ConnHandler.qTree.PrintTree()
 		}
 	}
 }
@@ -111,6 +132,7 @@ func readMessages(ctx context.Context, client *types.Client) {
 		client.Conn.Close()
 		ClientListMutex.Lock()
 		delete(ClientList, client)
+		ConnHandler.qTree.Remove(client)
 		ClientListMutex.Unlock()
 		log.Printf("Client disconnected: %s\n", client.Email)
 	}()

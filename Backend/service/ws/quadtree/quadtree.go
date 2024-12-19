@@ -29,22 +29,18 @@ type Quadtree struct {
 
 	IsLeaf      bool
 	Parent      *Quadtree
-	Points      []Point
+	Points      []*Point // NEED TO CHANGE THIS TO A LINKEDLIST BECAUSE NEVER ACCESS ELEMENT IN MIDDLE OF LIST
 	TotalPoints int
 	Children    [4]*Quadtree
 }
 
+func NewQuadtreeWithNumbers(x1, y1, x2, y2 int) *Quadtree {
+	return NewQuadtree(NewBounds(&Point{x1, y1, nil}, &Point{x2, y2, nil}), nil)
+}
+
 // For creating a completely new quadtree
 func NewQuadtree(bounds Bounds, parent *Quadtree) *Quadtree {
-	q := &Quadtree{
-		Root:        nil,
-		Bounds:      bounds,
-		TotalPoints: 0,
-		Points:      make([]Point, 0),
-		Children:    [4]*Quadtree{nil, nil, nil, nil},
-		Parent:      parent,
-		IsLeaf:      true,
-	}
+	q := NewQuadtreeWithRoot(bounds, parent, nil)
 	q.Root = q
 	return q
 }
@@ -55,7 +51,7 @@ func NewQuadtreeWithRoot(bounds Bounds, parent *Quadtree, root *Quadtree) *Quadt
 		Root:        root,
 		Bounds:      bounds,
 		TotalPoints: 0,
-		Points:      make([]Point, 0),
+		Points:      make([]*Point, 0),
 		Children:    [4]*Quadtree{nil, nil, nil, nil},
 		Parent:      parent,
 		IsLeaf:      true,
@@ -65,7 +61,10 @@ func NewQuadtreeWithRoot(bounds Bounds, parent *Quadtree, root *Quadtree) *Quadt
 
 // Inserts a point into the quadtree, recursively.
 // Will update the trees to the quadtree that initially called the function.
-func (q *Quadtree) Insert(point Point) {
+func (q *Quadtree) Insert(point *Point) {
+	if q == q.Root {
+		q.Bounds.WrapMovePoint(point, 0, 0, true)
+	}
 	if !q.Bounds.Contains(point) {
 		panic("Point is out of bounds")
 	}
@@ -94,17 +93,17 @@ func (q *Quadtree) Insert(point Point) {
 // Removes the first occurance point from the quadtree.
 // Will update the trees to the quadtree that initially called the function.
 // @Returns the quadtree that the function starts from and the point that was removed.
-func (q *Quadtree) RemovePoint(point Point) (*Quadtree, *Point) {
+func (q *Quadtree) RemovePoint(point *Point) (*Quadtree, *Point) {
 	if !q.Bounds.Contains(point) {
 		return nil, nil
 	}
 
 	if q.IsLeaf {
 		for i, p := range q.Points {
-			if p == point {
+			if p.Equals(point) {
 				q.Points = append(q.Points[:i], q.Points[i+1:]...)
 				q.TotalPoints--
-				return q, &p
+				return q, p
 			}
 		}
 		return nil, nil
@@ -120,7 +119,7 @@ func (q *Quadtree) RemovePoint(point Point) (*Quadtree, *Point) {
 	q.TotalPoints--
 	if q.TotalPoints < MaxPoints && q.Bounds.Width() > MinArea {
 		// Merge the children
-		points := make([]Point, 0)
+		points := make([]*Point, 0)
 		for _, child := range q.Children {
 			if child != nil {
 				points = append(points, child.Points...)
@@ -144,8 +143,8 @@ func (q *Quadtree) RemovePoint(point Point) (*Quadtree, *Point) {
  * @Returns the quadtree the new point was inserted at? Might need to change
  * If the old point doesn't exist, won't insert the new point and returns null
  */
-func (q *Quadtree) MovePoint(oldPoint Point, translation Point) *Quadtree {
-	q = q.findMinimumBoundingTree([]Point{oldPoint, Translate(oldPoint, translation.X, translation.Y)})
+func (q *Quadtree) MovePoint(oldPoint *Point, translation *Point) *Quadtree {
+	q = q.findMinimumBoundingTree([]*Point{oldPoint, q.Root.Bounds.WrapMovePoint(oldPoint, translation.X, translation.Y, false)})
 	if q == nil {
 		return nil
 	}
@@ -154,7 +153,22 @@ func (q *Quadtree) MovePoint(oldPoint Point, translation Point) *Quadtree {
 	if q1 == nil {
 		return nil
 	}
-	oldPoint.Translate(translation.X, translation.Y)
+	q.Root.Bounds.WrapMovePoint(oldPoint, translation.X, translation.Y, true)
+	q.Insert(oldPoint)
+	return q
+}
+
+func (q *Quadtree) TeleportPoint(oldPoint *Point, newPoint *Point) *Quadtree {
+	q = q.findMinimumBoundingTree([]*Point{oldPoint, newPoint})
+	if q == nil {
+		return nil
+	}
+
+	q1, _ := q.RemovePoint(oldPoint)
+	if q1 == nil {
+		return nil
+	}
+	oldPoint.Teleport(newPoint.X, newPoint.Y)
 	q.Insert(oldPoint)
 	return q
 }
@@ -163,21 +177,21 @@ func (q *Quadtree) MovePoint(oldPoint Point, translation Point) *Quadtree {
  * Finds the quadtree of the box that contains all the points in the array
  * @Returns nil if array is empty or points aren't all in the boundary
  */
-func (q *Quadtree) findMinimumBoundingTree(points []Point) *Quadtree {
+func (q *Quadtree) findMinimumBoundingTree(points []*Point) *Quadtree {
 	bounds := NewBoundsWithPointArray(points)
 	if bounds == nil {
 		return nil
 	}
 
-	if !q.Bounds.Contains(bounds.BottomLeft) || !q.Bounds.Contains(bounds.TopRight) {
+	if !q.Bounds.Contains(&bounds.BottomLeft) || !q.Bounds.Contains(&bounds.TopRight) {
 		return nil
 	} else {
 		if q.IsLeaf {
 			return q
 		}
 
-		if q.Children[q.Bounds.WhichQuadrant(bounds.BottomLeft)].Bounds.Contains(bounds.TopRight) {
-			return q.Children[q.Bounds.WhichQuadrant(bounds.BottomLeft)].findMinimumBoundingTree(points)
+		if q.Children[q.Bounds.WhichQuadrant(&bounds.BottomLeft)].Bounds.Contains(&bounds.TopRight) {
+			return q.Children[q.Bounds.WhichQuadrant(&bounds.BottomLeft)].findMinimumBoundingTree(points)
 		}
 
 		return q
@@ -193,7 +207,7 @@ func (q *Quadtree) QueryRange(rangeBounds Bounds) []Point {
  * Finds the quadtree the point should be in
  * @Returns nil if the point is not in the quadtree
  */
-func (q *Quadtree) QueryPointQuadrant(point Point) *Quadtree {
+func (q *Quadtree) QueryPointQuadrant(point *Point) *Quadtree {
 	if !q.Bounds.Contains(point) {
 		return nil
 	}
@@ -212,22 +226,22 @@ func (q *Quadtree) QueryPointQuadrant(point Point) *Quadtree {
 
 @Returns a QueuePoints with all the points that are within the distance of the point
 */
-func (q *Quadtree) QueryNearby(point Point, dist int) *QueuePoints {
+func (q *Quadtree) QueryNearby(point *Point, dist int) *QueuePoints {
 	queue := NewQueue()
-	q.queryNearby(NewCircle(point, dist), queue)
+	q.queryNearby(NewCircle(*point, dist), queue)
 	return queue
 }
 func (q *Quadtree) queryNearby(circle Circle, queue *QueuePoints) {
 	if q.IsLeaf {
 		for _, p := range q.Points {
-			if circle.Contains(p) {
-				queue.Enqueue(&p)
+			if q.Root.Bounds.WrapCircleContainsPoint(circle, p) {
+				queue.Enqueue(p)
 			}
 		}
 		return
 	}
 	for _, child := range q.Children {
-		if child.Bounds.IntersectsCircle(circle) {
+		if q.Root.Bounds.WrapIntersectionBoundCircle(child.Bounds, circle) {
 			child.queryNearby(circle, queue)
 		}
 	}

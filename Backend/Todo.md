@@ -3,3 +3,4 @@
 4. Location message distributing method is bruteforce right now and needs to be made to be better
 5. Finish quadtree implementation
 6. Need a way to convert from latitude longitude to equideistance miles
+7. Implement quadtree with websocket
